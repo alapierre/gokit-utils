@@ -14,44 +14,62 @@ type Client struct {
 	HealthCheckUrl string
 	StatusPageUrl  string
 	HomePageUrl    string
-	EurekaHost     string
+	port           int
+
+	ip       string
+	hostname string
+	logger   log.Logger
 }
 
-func New(eurekaHost string) *Client {
+//goland:noinspection GoUnusedExportedFunction
+func New() *Client {
 	return &Client{
 		HealthCheckUrl: "",
 		StatusPageUrl:  "",
 		HomePageUrl:    "",
-		EurekaHost:     "",
 	}
 }
 
-func (*Client) Default() {
-
+func (c *Client) Default(port int, homePage string) *Client {
+	c.DefaultWithLogger(port, homePage, log.NewLogfmtLogger(os.Stderr))
+	return c
 }
 
-func (*Client) init() {
-
+func (c *Client) DefaultWithLogger(port int, homePage string, logger log.Logger) *Client {
+	c.logger = logger
+	err := c.init(port, homePage, "http")
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
-func Register(eurekaHost string, port int, serviceName, homePage string) (*eureka.Registrar, error) {
+func (c *Client) init(port int, homePage, proto string) error {
 
-	ip, err := GetLocalIP()
+	c.logger = log.With(c.logger, "ts", log.DefaultTimestamp)
+
+	var err error
+	c.ip, err = GetLocalIP()
+	if err != nil {
+		return err
+	}
+
+	c.hostname, err = os.Hostname()
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	hostname, err := os.Hostname()
+	slog.Info(fmt.Sprintf("IP: %s hostname: %s", c.ip, c.hostname))
 
-	if err != nil {
-		return nil, err
-	}
+	c.HealthCheckUrl = fmt.Sprintf("%s://%s:%d/health", proto, c.ip, port)
+	c.StatusPageUrl = fmt.Sprintf("%s://%s:%d/info", proto, c.ip, port)
+	c.HomePageUrl = fmt.Sprintf("%s://%s:%d/%s", proto, c.ip, port, homePage)
 
-	logger := log.NewLogfmtLogger(os.Stderr)
-	logger = log.With(logger, "ts", log.DefaultTimestamp)
+	return nil
+}
 
-	slog.Info(fmt.Sprintf("IP: %s hostname: %s", ip, hostname))
+func (c *Client) Register(eurekaHost, serviceName string) (*eureka.Registrar, error) {
 
 	var fargoConfig fargo.Config
 	// Target Eureka server(s).
@@ -60,17 +78,17 @@ func Register(eurekaHost string, port int, serviceName, homePage string) (*eurek
 	fargoConfig.Eureka.PollIntervalSeconds = 1
 
 	serviceInstance := &fargo.Instance{
-		HostName:         fmt.Sprintf(ip),
-		InstanceId:       fmt.Sprintf("%s:%s:%d", hostname, serviceName, port),
-		Port:             port,
+		HostName:         fmt.Sprintf(c.ip),
+		InstanceId:       fmt.Sprintf("%s:%s:%d", c.hostname, serviceName, c.port),
+		Port:             c.port,
 		PortEnabled:      true,
 		App:              serviceName,
-		IPAddr:           ip,
+		IPAddr:           c.ip,
 		VipAddress:       serviceName,
 		SecureVipAddress: serviceName,
-		HealthCheckUrl:   fmt.Sprintf("http://%s:%d/health", ip, port),
-		StatusPageUrl:    fmt.Sprintf("http://%s:%d/info", ip, port),
-		HomePageUrl:      fmt.Sprintf("http://%s:%d/%s", ip, port, homePage),
+		HealthCheckUrl:   c.HealthCheckUrl,
+		StatusPageUrl:    c.StatusPageUrl,
+		HomePageUrl:      c.HomePageUrl,
 		Status:           fargo.UP,
 		DataCenterInfo:   fargo.DataCenterInfo{Name: fargo.MyOwn},
 		CountryId:        1,
@@ -79,7 +97,7 @@ func Register(eurekaHost string, port int, serviceName, homePage string) (*eurek
 
 	// Create a Fargo connection and a Eureka registrar.
 	fargoConnection := fargo.NewConnFromConfig(fargoConfig)
-	registrar1 := eureka.NewRegistrar(&fargoConnection, serviceInstance, log.With(logger, "component", "registrar1"))
+	registrar1 := eureka.NewRegistrar(&fargoConnection, serviceInstance, log.With(c.logger, "component", "registrar1"))
 
 	// Register one instance.
 	registrar1.Register()
