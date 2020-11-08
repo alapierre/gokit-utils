@@ -6,4 +6,5 @@ require (
 	github.com/go-eden/slf4go v1.0.7
 	github.com/go-kit/kit v0.10.0
 	github.com/hudl/fargo v1.3.0
+	github.com/miekg/dns v1.1.35 // indirect
 )
