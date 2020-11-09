@@ -1,6 +1,17 @@
 # gokit-utils
 Go Kit Utils for microservices
 
+### Requrments 
+
+- go 1.15
+- go modules enabled project
+
+### Instalation
+
+```
+go get github.com/alapierre/gokit-utils
+```
+
 ### Eureka registration
 
 ```go
