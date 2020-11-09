@@ -1,0 +1,7 @@
+version: '3.1'
+services:
+
+  eureka:
+    image: dc.sidgroup.pl/s4t-eureka:1.0.12
+    ports:
+      - "8761:8761"
