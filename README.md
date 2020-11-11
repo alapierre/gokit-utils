@@ -1,4 +1,7 @@
 # gokit-utils
+
+[![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=alapierre_gokit-utils&metric=alert_status)](https://sonarcloud.io/dashboard?id=alapierre_gokit-utils)
+
 Go Kit Utils for microservices
 
 ### Requrments 
