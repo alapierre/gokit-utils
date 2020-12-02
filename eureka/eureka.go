@@ -48,6 +48,7 @@ func (c *Client) init(port int, homePage, proto string) error {
 
 	c.logger = log.With(c.logger, "ts", log.DefaultTimestamp)
 
+	c.port = port
 	var err error
 	c.ip, err = GetLocalIP()
 	if err != nil {
